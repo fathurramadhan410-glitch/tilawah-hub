@@ -2,12 +2,13 @@
 import { useState, useEffect } from 'react';
 
 export default function QuranPage() {
-  const [viewMode, setViewMode] = useState<'page' | 'surah'>('page'); // Default Per Halaman
+  const [viewMode, setViewMode] = useState<'page' | 'surah'>('page');
   
   // State Mode Per Halaman
   const [currentPage, setCurrentPage] = useState(1); // 1 sampai 604
   const [pageAyahs, setPageAyahs] = useState<any[]>([]);
   const [loadingPage, setLoadingPage] = useState(true);
+  const [currentJuz, setCurrentJuz] = useState(1); // Menyimpan info Juz
 
   // State Mode Per Surah
   const [surahList, setSurahList] = useState<any[]>([]);
@@ -20,7 +21,10 @@ export default function QuranPage() {
     return num.toString().replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[parseInt(d)]);
   };
 
-  // Fetch daftar surah untuk dropdown
+  // Halaman awal setiap Juz (Standar Mushaf Madinah)
+  const juzStartPages = [1, 22, 42, 62, 82, 102, 122, 142, 162, 182, 202, 222, 242, 262, 282, 302, 322, 342, 362, 382, 402, 422, 442, 462, 482, 502, 522, 542, 562, 582];
+
+  // Fetch daftar surah
   useEffect(() => {
     fetch('https://api.alquran.cloud/v1/surah')
       .then(res => res.json())
@@ -36,8 +40,10 @@ export default function QuranPage() {
     fetch(`https://api.alquran.cloud/v1/page/${currentPage}/quran-uthmani`)
       .then(res => res.json())
       .then(data => {
-        if (data.code === 200) {
+        if (data.code === 200 && data.data.ayahs.length > 0) {
           setPageAyahs(data.data.ayahs);
+          // Ambil info Juz dari ayat pertama di halaman ini
+          setCurrentJuz(data.data.ayahs[0].juz);
         }
         setLoadingPage(false);
       })
@@ -61,6 +67,13 @@ export default function QuranPage() {
 
   const goNextPage = () => { if (currentPage < 604) setCurrentPage(currentPage + 1); };
   const goPrevPage = () => { if (currentPage > 1) setCurrentPage(currentPage - 1); };
+
+  // Fungsi saat Juz dipilih dari dropdown
+  const handleJuzChange = (juz: number) => {
+    if (juz >= 1 && juz <= 30) {
+      setCurrentPage(juzStartPages[juz - 1]);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -92,22 +105,44 @@ export default function QuranPage() {
       {/* Konten Mode Per Halaman */}
       {viewMode === 'page' && (
         <div className="space-y-4">
-          {/* Navigasi Halaman */}
-          <div className="flex items-center justify-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-            <button onClick={goPrevPage} disabled={currentPage === 1} className="px-4 py-2 bg-gray-100 rounded-lg disabled:opacity-50 hover:bg-gray-200 transition">← Sebelumnya</button>
-            <span className="font-bold text-gray-800">Hal. {currentPage} / 604</span>
-            <button onClick={goNextPage} disabled={currentPage === 604} className="px-4 py-2 bg-gray-100 rounded-lg disabled:opacity-50 hover:bg-gray-200 transition">Berikutnya →</button>
+          {/* Navigasi Halaman & Pilih Juz */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3">
+              <button onClick={goPrevPage} disabled={currentPage === 1} className="px-4 py-2 bg-gray-100 rounded-lg disabled:opacity-50 hover:bg-gray-200 transition text-gray-800 font-medium">← Sebelumnya</button>
+              <span className="font-bold text-gray-800">Hal. {currentPage} / 604</span>
+              <button onClick={goNextPage} disabled={currentPage === 604} className="px-4 py-2 bg-gray-100 rounded-lg disabled:opacity-50 hover:bg-gray-200 transition text-gray-800 font-medium">Berikutnya →</button>
+            </div>
+            
+            {/* Dropdown Pilih Juz */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600 font-medium">Pilih Juz:</span>
+              <select 
+                value={currentJuz} 
+                onChange={(e) => handleJuzChange(Number(e.target.value))}
+                className="p-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              >
+                {Array.from({length: 30}, (_, i) => i + 1).map(j => (
+                  <option key={j} value={j} className="text-black">Juz {j}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Tampilan Halaman Utuh (Seperti Mushaf Asli) */}
           <div className="bg-[#fffdf5] rounded-2xl shadow-md border-4 border-double border-emerald-800/30 p-6 md:p-12 min-h-[60vh] relative">
+            
+            {/* Info Juz di Pojok Kanan Atas */}
+            {!loadingPage && (
+              <div className="absolute top-4 right-4 bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full border border-emerald-300">
+                Juz {currentJuz}
+              </div>
+            )}
+
             {loadingPage ? (
               <div className="flex items-center justify-center min-h-[50vh]">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
               </div>
             ) : (
-              // Gabungkan semua ayat di halaman ini menjadi satu paragraf rata kanan-kiri (justify)
-              // dengan nomor ayat di dalam lingkaran, persis mushaf fisik.
               <p className="font-quran text-justify text-right text-2xl md:text-3xl leading-loose text-gray-900" dir="rtl">
                 {pageAyahs.map((ayah) => (
                   <span key={ayah.number}>
