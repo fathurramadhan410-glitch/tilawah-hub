@@ -13,7 +13,6 @@ export async function GET() {
     const today = new Date().toISOString().split('T')[0];
     const todayAttempt = await QuizAttempt.findOne({ clerkId: userId, date: today });
     
-    // Ambil 10 soal untuk hari ini, sembunyikan jawaban benarnya
     const questions = getDailyQuestions().map((q, index) => ({
       id: index,
       question: q.q,
@@ -45,14 +44,13 @@ export async function POST(req: Request) {
     const dailyQuestions = getDailyQuestions();
     let correctCount = 0;
     
-    // Cek jawaban user
     answers.forEach((ans: { id: number, answer: string }) => {
       if (dailyQuestions[ans.id] && dailyQuestions[ans.id].a === ans.answer) {
         correctCount++;
       }
     });
 
-    const score = correctCount * 10; // 10 poin per jawaban benar
+    const score = correctCount * 10;
     const attempt = await QuizAttempt.create({ clerkId: userId, date: today, score });
     
     return NextResponse.json({ success: true, score, correctCount, totalQuestions: dailyQuestions.length });
