@@ -9,12 +9,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  
+  // State Global Notifikasi
+  const [notif, setNotif] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
       router.push('/');
     }
   }, [isLoaded, isSignedIn, router]);
+
+  // Listener untuk memanggil notifikasi dari halaman manapun
+  useEffect(() => {
+    const handleNotify = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setNotif(detail);
+      setTimeout(() => setNotif(null), 3000);
+    };
+    window.addEventListener('notify', handleNotify);
+    return () => window.removeEventListener('notify', handleNotify);
+  }, []);
 
   if (!isLoaded || !isSignedIn) {
     return (
@@ -99,6 +113,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+
+      {/* GLOBAL NOTIFICATION MODAL (Statis, Checkmark/Cross) */}
+      {notif && (
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-sm bg-white rounded-xl shadow-2xl border border-gray-100 p-6 flex items-center gap-4">
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${notif.type === 'success' ? 'bg-green-100' : 'bg-red-100'}`}>
+            {notif.type === 'success' ? (
+              <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+            ) : (
+              <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path></svg>
+            )}
+          </div>
+          <div>
+            <h4 className="font-bold text-gray-900">{notif.type === 'success' ? 'Berhasil' : 'Gagal'}</h4>
+            <p className="text-sm text-gray-500">{notif.message}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

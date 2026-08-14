@@ -2,6 +2,21 @@ import { NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import dbConnect from '@/lib/mongodb';
 import ReadingLog from '@/models/ReadingLog';
+import QuizAttempt from '@/models/QuizAttempt';
+
+// Helper untuk ambil nama dari Clerk
+async function getUsersData(userIds: string[]) {
+  const client = await clerkClient();
+  const users = await Promise.all(userIds.map(async (id) => {
+    try {
+      const u = await client.users.getUser(id);
+      return { id, name: u.firstName || u.username || 'Pengguna' };
+    } catch {
+      return null;
+    }
+  }));
+  return users.filter(u => u !== null);
+}
 
 export async function GET() {
   try {
@@ -10,32 +25,55 @@ export async function GET() {
 
     await dbConnect();
 
-    // Agregasi untuk hitung total halaman per user
-    const topLogs = await ReadingLog.aggregate([
-      { $group: { _id: '$clerkId', totalPages: { $sum: '$pagesRead' } } },
+    // 1. LEADERBOARD TILAWAH (30 Hari Terakhir)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const topReadersData = await ReadingLog.aggregate([
+      { $match: { date: { $gte: thirtyDaysAgo } } },
+      { $group: { _id: '$clerkId', totalPages: { $sum: '$pagesRead' }, totalLogs: { $sum: 1 } } },
       { $sort: { totalPages: -1 } },
       { $limit: 10 }
     ]);
 
-    // Ambil nama dari Clerk
-    const client = await clerkClient();
-    const topUsers = await Promise.all(topLogs.map(async (log) => {
-      try {
-        const user = await client.users.getUser(log._id);
-        return {
-          id: log._id,
-          name: user.firstName || user.username || 'Pengguna',
-          totalPages: log.totalPages,
-          points: log.totalPages * 10
-        };
-      } catch {
-        return null;
-      }
-    }));
+    const readerIds = topReadersData.map(r => r._id);
+    const readerUsers = await getUsersData(readerIds);
+    
+    const tilawahLeaderboard = topReadersData.map(r => {
+      const u = readerUsers.find(usr => usr.id === r._id);
+      return {
+        id: r._id,
+        name: u?.name || 'Pengguna',
+        totalPages: r.totalPages,
+        totalLogs: r.totalLogs,
+        points: r.totalPages * 10
+      };
+    }).filter(u => u.name !== 'Pengguna' || readerIds.includes(u.id)); // Pastikan nama tidak null
 
-    const validUsers = topUsers.filter(u => u !== null);
+    // 2. LEADERBOARD KUIS (Total Skor Semua Waktu)
+    const topQuizData = await QuizAttempt.aggregate([
+      { $group: { _id: '$clerkId', totalScore: { $sum: '$score' } } },
+      { $sort: { totalScore: -1 } },
+      { $limit: 10 }
+    ]);
 
-    return NextResponse.json({ topUsers: validUsers });
+    const quizIds = topQuizData.map(q => q._id);
+    const quizUsers = await getUsersData(quizIds);
+    
+    const quizLeaderboard = topQuizData.map(q => {
+      const u = quizUsers.find(usr => usr.id === q._id);
+      return {
+        id: q._id,
+        name: u?.name || 'Pengguna',
+        totalScore: q.totalScore,
+        correctAnswers: Math.floor(q.totalScore / 10) // 1 benar = 10 poin
+      };
+    });
+
+    return NextResponse.json({ 
+      tilawahLeaderboard, 
+      quizLeaderboard 
+    });
   } catch (error: any) {
     return NextResponse.json({ error: 'Server Error' }, { status: 500 });
   }

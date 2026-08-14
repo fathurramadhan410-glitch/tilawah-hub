@@ -1,22 +1,23 @@
 'use client';
 import { useState, useEffect } from 'react';
 
+// Helper untuk memanggil notifikasi global
+const notify = (type: 'success' | 'error', message: string) => {
+  window.dispatchEvent(new CustomEvent('notify', { detail: { type, message } }));
+};
+
 export default function KehadiranPage() {
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   
-  // State Modal Izin
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [leaveType, setLeaveType] = useState('Sakit');
   const [reason, setReason] = useState('');
   
-  // State Modal Absensi Tunda
   const [showLateModal, setShowLateModal] = useState(false);
   const [lateDate, setLateDate] = useState('');
-  
-  const [showNotif, setShowNotif] = useState('');
 
   const fetchData = async () => {
     try {
@@ -32,15 +33,8 @@ export default function KehadiranPage() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const triggerNotif = (msg: string) => {
-    setShowNotif(msg);
-    setTimeout(() => setShowNotif(''), 3000);
-  };
-
   const handleCheckIn = async (date = new Date().toISOString().split('T')[0]) => {
     setScanning(true);
-    
-    // Simulasi scan sidik jari 1.5 detik
     setTimeout(async () => {
       const res = await fetch('/api/attendances', {
         method: 'POST',
@@ -49,12 +43,12 @@ export default function KehadiranPage() {
       });
       
       if (res.ok) {
-        triggerNotif('Sidik jari terverifikasi! Kehadiran dicatat.');
+        notify('success', 'Sidik jari terverifikasi! Kehadiran dicatat.');
         setShowLateModal(false);
         fetchData();
       } else {
         const err = await res.json();
-        triggerNotif(err.error || 'Gagal absen.');
+        notify('error', err.error || 'Gagal absen.');
       }
       setScanning(false);
     }, 1500);
@@ -69,34 +63,30 @@ export default function KehadiranPage() {
     });
     
     if (res.ok) {
-      triggerNotif('Izin berhasil disimpan.');
+      notify('success', 'Izin berhasil disimpan.');
       setShowLeaveModal(false);
       setShowLateModal(false);
       setReason('');
       fetchData();
     } else {
       const err = await res.json();
-      triggerNotif(err.error || 'Gagal ajukan izin.');
+      notify('error', err.error || 'Gagal ajukan izin.');
     }
   };
 
   if (loading) return <div className="text-center py-10 text-gray-500">Memuat data kehadiran...</div>;
 
   return (
-    <div className="space-y-6 relative">
-      
-      {showNotif && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-emerald-500 text-white px-6 py-3 rounded-xl shadow-lg animate-bounce">
-          {showNotif}
-        </div>
-      )}
-
+    <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center flex flex-col justify-center items-center">
-          <h3 className="text-xl font-bold text-gray-900 mb-6">Absensi Hari Ini</h3>
+        
+        {/* Kartu Absensi Hari Ini */}
+        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center items-center text-center">
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Absensi Hari Ini</h3>
+          <p className="text-gray-500 text-sm mb-6">Rutinitas harian untuk menjaga konsistensi istiqamah.</p>
           
           {todayAttendance ? (
-            <div className={`p-6 rounded-xl w-full ${todayAttendance.status === 'hadir' ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>
+            <div className={`p-6 rounded-xl w-full ${todayAttendance.status === 'hadir' ? 'bg-green-50 border-2 border-green-200 text-green-700' : 'bg-yellow-50 border-2 border-yellow-200 text-yellow-700'}`}>
               <p className="font-bold text-lg">
                 {todayAttendance.status === 'hadir' ? '✅ Anda Sudah Hadir' : `📝 Izin: ${todayAttendance.leaveType}`}
               </p>
@@ -104,8 +94,7 @@ export default function KehadiranPage() {
             </div>
           ) : (
             <>
-              {/* Tombol Sidik Jari */}
-              <div className="flex flex-col items-center gap-6">
+              <div className="flex flex-col items-center gap-6 mb-6">
                 <button 
                   onClick={() => handleCheckIn()} 
                   disabled={scanning}
@@ -122,39 +111,46 @@ export default function KehadiranPage() {
                     </svg>
                   )}
                 </button>
-                <span className="text-sm font-medium text-gray-500">{scanning ? 'Memindai...' : 'Sentuh untuk Absen (Sidik Jari)'}</span>
+                <span className="text-sm font-medium text-gray-500">{scanning ? 'Memindai Sidik Jari...' : 'Sentuh ikon untuk Absen'}</span>
               </div>
 
-              <div className="flex flex-col w-full gap-3 mt-6">
-                <button onClick={() => setShowLeaveModal(true)} className="w-full bg-gray-50 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-100 transition">
-                  📝 Ajukan Izin
-                </button>
-                <button onClick={() => setShowLateModal(true)} className="w-full bg-indigo-50 text-indigo-700 py-3 rounded-xl font-bold hover:bg-indigo-100 transition">
-                  ⏳ Absensi Tunda (Terlupa)
-                </button>
+              <div className="flex flex-col w-full gap-3">
+                <button onClick={() => setShowLeaveModal(true)} className="w-full bg-gray-50 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-100 transition">📝 Ajukan Izin</button>
+                <button onClick={() => setShowLateModal(true)} className="w-full bg-indigo-50 text-indigo-700 py-3 rounded-xl font-bold hover:bg-indigo-100 transition">⏳ Absensi Tunda (Terlupa)</button>
               </div>
             </>
           )}
         </div>
 
+        {/* Kartu Riwayat 30 Hari */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-bold text-gray-900 mb-4">Riwayat 30 Hari Terakhir</h3>
-          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-            {history.map(att => (
-              <div key={att._id} className="flex items-center justify-between p-3 border-b border-gray-100 rounded-lg hover:bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${att.status === 'hadir' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                    {new Date(att.date).getDate()}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{new Date(att.date).toLocaleDateString('id-ID', { weekday: 'long' })}</p>
-                    <p className="text-xs text-gray-400">{att.status === 'hadir' ? 'Hadir' : `Izin ${att.leaveType || ''}`}</p>
-                  </div>
-                </div>
-                {att.reason && <span className="text-xs text-gray-400 truncate max-w-[100px]">{att.reason}</span>}
-              </div>
-            ))}
-            {history.length === 0 && <p className="text-center text-gray-400 text-sm py-4">Belum ada riwayat.</p>}
+          <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50 sticky top-0">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Tanggal</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Keterangan</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {history.map(att => (
+                  <tr key={att._id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{new Date(att.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${att.status === 'hadir' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                        {att.status === 'hadir' ? 'Hadir' : att.leaveType || 'Izin'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500 truncate max-w-[150px]">{att.reason || '-'}</td>
+                  </tr>
+                ))}
+                {history.length === 0 && (
+                  <tr><td colSpan={3} className="px-4 py-6 text-center text-sm text-gray-500">Belum ada riwayat.</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -187,22 +183,14 @@ export default function KehadiranPage() {
         </div>
       )}
 
-      {/* MODAL ABSENSI TUNDA (KALENDER) */}
+      {/* MODAL ABSENSI TUNDA */}
       {showLateModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowLateModal(false)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-gray-900 mb-4">Absensi Tunda</h3>
             <p className="text-sm text-gray-500 mb-4">Pilih tanggal di mana Anda lupa absen (maksimal 1 tahun ke belakang).</p>
-            
             <div className="space-y-4">
-              <input 
-                type="date" 
-                value={lateDate} 
-                onChange={e => setLateDate(e.target.value)} 
-                max={new Date().toISOString().split('T')[0]} // Tidak bisa pilih hari ini/masa depan
-                className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              
+              <input type="date" value={lateDate} onChange={e => setLateDate(e.target.value)} max={new Date().toISOString().split('T')[0]} className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500" />
               {lateDate && (
                 <div className="flex gap-3">
                   <button onClick={() => handleCheckIn(lateDate)} className="flex-1 bg-emerald-600 text-white p-3 rounded-lg font-bold">Tandai Hadir</button>
@@ -214,7 +202,6 @@ export default function KehadiranPage() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

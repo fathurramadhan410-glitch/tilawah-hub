@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import dbConnect from '@/lib/mongodb';
 import QuizAttempt from '@/models/QuizAttempt';
+import { getDailyQuestions } from '@/lib/questions';
 
 export async function GET() {
   try {
@@ -12,7 +13,15 @@ export async function GET() {
     const today = new Date().toISOString().split('T')[0];
     const todayAttempt = await QuizAttempt.findOne({ clerkId: userId, date: today });
     
-    return NextResponse.json({ todayAttempt });
+    // Ambil 10 soal untuk hari ini, sembunyikan jawaban benarnya
+    const questions = getDailyQuestions().map((q, index) => ({
+      id: index,
+      question: q.q,
+      options: q.o,
+      category: q.c
+    }));
+
+    return NextResponse.json({ todayAttempt, questions });
   } catch (error: any) {
     return NextResponse.json({ error: 'Server Error' }, { status: 500 });
   }
@@ -23,7 +32,7 @@ export async function POST(req: Request) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { score } = await req.json();
+    const { answers } = await req.json();
     const today = new Date().toISOString().split('T')[0];
 
     await dbConnect();
@@ -33,8 +42,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Sudah mengerjakan kuis hari ini' }, { status: 400 });
     }
 
+    const dailyQuestions = getDailyQuestions();
+    let correctCount = 0;
+    
+    // Cek jawaban user
+    answers.forEach((ans: { id: number, answer: string }) => {
+      if (dailyQuestions[ans.id] && dailyQuestions[ans.id].a === ans.answer) {
+        correctCount++;
+      }
+    });
+
+    const score = correctCount * 10; // 10 poin per jawaban benar
     const attempt = await QuizAttempt.create({ clerkId: userId, date: today, score });
-    return NextResponse.json({ success: true, attempt });
+    
+    return NextResponse.json({ success: true, score, correctCount, totalQuestions: dailyQuestions.length });
   } catch (error: any) {
     return NextResponse.json({ error: 'Server Error' }, { status: 500 });
   }
