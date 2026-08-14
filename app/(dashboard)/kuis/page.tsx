@@ -1,74 +1,100 @@
 'use client';
 import { useState, useEffect } from 'react';
 
+const notify = (type: 'success' | 'error', message: string) => {
+  window.dispatchEvent(new CustomEvent('notify', { detail: { type, message } }));
+};
+
 export default function KuisPage() {
   const [todayAttempt, setTodayAttempt] = useState<any>(null);
+  const [questions, setQuestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [answers, setAnswers] = useState<{[key: number]: string}>({});
-  const [score, setScore] = useState(0);
-  const [submitted, setSubmitted] = useState(false);
-
-  // 5 Soal Sederhana (Nanti bisa diupdate)
-  const questions = [
-    { q: "Surat pertama dalam Al-Qur'an adalah?", o: ["Al-Baqarah", "Al-Fatihah", "An-Nas", "Al-Ikhlas"], a: "Al-Fatihah" },
-    { q: "Jumlah surat dalam Al-Qur'an adalah?", o: ["114", "30", "604", "6666"], a: "114" },
-    { q: "Hukum bacaan Nun Mati bertemu huruf Ba disebut?", o: ["Izhar", "Iqlab", "Idgham", "Ikhfa"], a: "Iqlab" },
-    { q: "Pembagi surah dalam Al-Qur'an terbagi menjadi berapa Juz?", o: ["10", "20", "30", "40"], a: "30" },
-    { q: "Surat An-Naas terdapat di Juz berapa?", o: ["Juz 28", "Juz 29", "Juz 30", "Juz 27"], a: "Juz 30" },
-  ];
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<any>(null);
 
   useEffect(() => {
     fetch('/api/quiz').then(res => res.json()).then(data => {
       setTodayAttempt(data.todayAttempt);
+      setQuestions(data.questions || []);
       setLoading(false);
     });
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    let correct = 0;
-    questions.forEach((q, i) => { if (answers[i] === q.a) correct++; });
-    setScore(correct);
-    setSubmitted(true);
-
-    await fetch('/api/quiz', {
+    setSubmitting(true);
+    
+    const formattedAnswers = Object.entries(answers).map(([id, answer]) => ({ id: parseInt(id), answer }));
+    
+    const res = await fetch('/api/quiz', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ score: correct * 20 }), // 1 benar = 20 poin
+      body: JSON.stringify({ answers: formattedAnswers }),
     });
+    
+    const data = await res.json();
+    
+    if (res.ok) {
+      setResult(data);
+      notify('success', `Kuis selesai! Skor: ${data.score} Poin (${data.correctCount}/${data.totalQuestions} Benar)`);
+      setTodayAttempt({ score: data.score });
+    } else {
+      notify('error', data.error || 'Gagal submit kuis.');
+    }
+    setSubmitting(false);
   };
 
   if (loading) return <div className="text-center py-10 text-gray-500">Memuat data kuis...</div>;
 
-  if (todayAttempt || submitted) {
+  if (todayAttempt && !result) {
     return (
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Kuis Selesai!</h2>
         <p className="text-lg text-gray-600">Skor Anda hari ini:</p>
-        <p className="text-5xl font-extrabold text-emerald-600 my-4">{todayAttempt?.score || (score * 20)} Poin</p>
+        <p className="text-5xl font-extrabold text-emerald-600 my-4">{todayAttempt.score} Poin</p>
         <p className="text-gray-400 text-sm">Kembali besok untuk soal baru!</p>
+      </div>
+    );
+  }
+
+  if (result) {
+     return (
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Kuis Selesai!</h2>
+        <p className="text-lg text-gray-600">Skor Anda hari ini:</p>
+        <p className="text-5xl font-extrabold text-emerald-600 my-4">{result.score} Poin</p>
+        <p className="text-md text-gray-500">Jawaban Benar: {result.correctCount} dari {result.totalQuestions}</p>
       </div>
     );
   }
 
   return (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
-      <h2 className="text-xl font-bold text-gray-900">🧠 Kuis Harian (5 Soal)</h2>
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-gray-900">🧠 Kuis Harian (10 Soal)</h2>
+        <p className="text-gray-500 text-sm mt-1">Pilihan ganda dari berbagai rumpun ilmu Islam.</p>
+      </div>
+      
       <form onSubmit={handleSubmit} className="space-y-6">
         {questions.map((q, i) => (
-          <div key={i} className="border-b border-gray-100 pb-4">
-            <p className="font-bold text-gray-800 mb-3">{i + 1}. {q.q}</p>
-            <div className="grid grid-cols-2 gap-2">
-              {q.o.map(opt => (
-                <label key={opt} className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input type="radio" name={`q${i}`} value={opt} onChange={e => setAnswers({...answers, [i]: e.target.value})} required className="text-emerald-600" />
-                  <span>{opt}</span>
+          <div key={q.id} className="border-b border-gray-100 pb-4">
+            <div className="flex justify-between items-center mb-3">
+              <p className="font-bold text-gray-800">{i + 1}. {q.question}</p>
+              <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">{q.category}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {q.options.map((opt: string) => (
+                <label key={opt} className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition ${answers[q.id] === opt ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                  <input type="radio" name={`q${q.id}`} value={opt} onChange={e => setAnswers({...answers, [q.id]: e.target.value})} required className="text-emerald-600 hidden" />
+                  <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs font-bold ${answers[q.id] === opt ? 'bg-emerald-600 text-white border-emerald-600' : 'border-gray-400 text-transparent'}`}>A</span>
+                  <span className="text-sm">{opt}</span>
                 </label>
               ))}
             </div>
           </div>
         ))}
-        <button type="submit" className="w-full bg-emerald-600 text-white p-4 rounded-xl font-bold hover:bg-emerald-700">Kirim Jawaban</button>
+        <button type="submit" disabled={submitting} className="w-full bg-emerald-600 text-white p-4 rounded-xl font-bold hover:bg-emerald-700 disabled:opacity-50">Kirim Jawaban</button>
       </form>
     </div>
   );
