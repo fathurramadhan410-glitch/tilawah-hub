@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
 
-// Helper untuk memanggil notifikasi global
 const notify = (type: 'success' | 'error', message: string) => {
   window.dispatchEvent(new CustomEvent('notify', { detail: { type, message } }));
 };
@@ -80,13 +79,13 @@ export default function KehadiranPage() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        {/* Kartu Absensi Hari Ini */}
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center items-center text-center">
+        {/* Kartu Absensi Hari Ini (Border Tegas) */}
+        <div className="bg-white p-8 rounded-2xl shadow-md border-2 border-gray-800 flex flex-col justify-center items-center text-center">
           <h3 className="text-xl font-bold text-gray-900 mb-2">Absensi Hari Ini</h3>
           <p className="text-gray-500 text-sm mb-6">Rutinitas harian untuk menjaga konsistensi istiqamah.</p>
           
           {todayAttendance ? (
-            <div className={`p-6 rounded-xl w-full ${todayAttendance.status === 'hadir' ? 'bg-green-50 border-2 border-green-200 text-green-700' : 'bg-yellow-50 border-2 border-yellow-200 text-yellow-700'}`}>
+            <div className={`p-6 rounded-xl w-full border-2 ${todayAttendance.status === 'hadir' ? 'bg-green-50 border-green-500 text-green-700' : 'bg-yellow-50 border-yellow-500 text-yellow-700'}`}>
               <p className="font-bold text-lg">
                 {todayAttendance.status === 'hadir' ? '✅ Anda Sudah Hadir' : `📝 Izin: ${todayAttendance.leaveType}`}
               </p>
@@ -111,27 +110,27 @@ export default function KehadiranPage() {
                     </svg>
                   )}
                 </button>
-                <span className="text-sm font-medium text-gray-500">{scanning ? 'Memindai Sidik Jari...' : 'Sentuh ikon untuk Absen'}</span>
+                <span className="text-sm font-medium text-gray-700">{scanning ? 'Memindai Sidik Jari...' : 'Sentuh ikon untuk Absen'}</span>
               </div>
 
               <div className="flex flex-col w-full gap-3">
-                <button onClick={() => setShowLeaveModal(true)} className="w-full bg-gray-50 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-100 transition">📝 Ajukan Izin</button>
-                <button onClick={() => setShowLateModal(true)} className="w-full bg-indigo-50 text-indigo-700 py-3 rounded-xl font-bold hover:bg-indigo-100 transition">⏳ Absensi Tunda (Terlupa)</button>
+                <button onClick={() => setShowLeaveModal(true)} className="w-full bg-gray-100 text-gray-800 py-3 rounded-xl font-bold hover:bg-gray-200 transition border border-gray-300">📝 Ajukan Izin</button>
+                <button onClick={() => setShowLateModal(true)} className="w-full bg-indigo-50 text-indigo-800 py-3 rounded-xl font-bold hover:bg-indigo-100 transition border border-indigo-300">⏳ Absensi Tunda (Terlupa)</button>
               </div>
             </>
           )}
         </div>
 
         {/* Kartu Riwayat 30 Hari */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
           <h3 className="text-lg font-bold text-gray-900 mb-4">Riwayat 30 Hari Terakhir</h3>
           <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Tanggal</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Keterangan</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Tanggal</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">Keterangan</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
@@ -155,7 +154,7 @@ export default function KehadiranPage() {
         </div>
       </div>
 
-      {/* MODAL AJUKAN IZIN */}
+      {/* MODAL AJUKAN IZIN (Perbaikan Teks Dropdown) */}
       {showLeaveModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowLeaveModal(false)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -163,16 +162,20 @@ export default function KehadiranPage() {
             <form onSubmit={handleLeave} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tipe Izin</label>
-                <select value={leaveType} onChange={e => setLeaveType(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500">
-                  <option value="Sakit">Sakit</option>
-                  <option value="Izin">Izin (Urusan Keluarga/dll)</option>
-                  <option value="Kesibukan">Kesibukan (Pekerjaan/Sekolah)</option>
-                  <option value="Lainnya">Lainnya</option>
+                <select 
+                  value={leaveType} 
+                  onChange={e => setLeaveType(e.target.value)} 
+                  className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-black"
+                >
+                  <option value="Sakit" className="text-black bg-white">Sakit</option>
+                  <option value="Izin" className="text-black bg-white">Izin (Urusan Keluarga/dll)</option>
+                  <option value="Kesibukan" className="text-black bg-white">Kesibukan (Pekerjaan/Sekolah)</option>
+                  <option value="Lainnya" className="text-black bg-white">Lainnya</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Keterangan (Opsional)</label>
-                <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+                <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-black"></textarea>
               </div>
               <div className="flex gap-3">
                 <button type="button" onClick={() => setShowLeaveModal(false)} className="flex-1 bg-gray-100 text-gray-700 p-3 rounded-lg font-bold">Batal</button>
@@ -183,14 +186,20 @@ export default function KehadiranPage() {
         </div>
       )}
 
-      {/* MODAL ABSENSI TUNDA */}
+      {/* MODAL ABSENSI TUNDA (Perbaikan Teks Kalender) */}
       {showLateModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowLateModal(false)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-gray-900 mb-4">Absensi Tunda</h3>
             <p className="text-sm text-gray-500 mb-4">Pilih tanggal di mana Anda lupa absen (maksimal 1 tahun ke belakang).</p>
             <div className="space-y-4">
-              <input type="date" value={lateDate} onChange={e => setLateDate(e.target.value)} max={new Date().toISOString().split('T')[0]} className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500" />
+              <input 
+                type="date" 
+                value={lateDate} 
+                onChange={e => setLateDate(e.target.value)} 
+                max={new Date().toISOString().split('T')[0]} 
+                className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-black"
+              />
               {lateDate && (
                 <div className="flex gap-3">
                   <button onClick={() => handleCheckIn(lateDate)} className="flex-1 bg-emerald-600 text-white p-3 rounded-lg font-bold">Tandai Hadir</button>

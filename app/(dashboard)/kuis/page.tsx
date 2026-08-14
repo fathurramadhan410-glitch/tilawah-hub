@@ -83,14 +83,29 @@ export default function KuisPage() {
               <p className="font-bold text-gray-800">{i + 1}. {q.question}</p>
               <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">{q.category}</span>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {q.options.map((opt: string) => (
-                <label key={opt} className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition ${answers[q.id] === opt ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:bg-gray-50'}`}>
-                  <input type="radio" name={`q${q.id}`} value={opt} onChange={e => setAnswers({...answers, [q.id]: e.target.value})} required className="text-emerald-600 hidden" />
-                  <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs font-bold ${answers[q.id] === opt ? 'bg-emerald-600 text-white border-emerald-600' : 'border-gray-400 text-transparent'}`}>A</span>
-                  <span className="text-sm">{opt}</span>
-                </label>
-              ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {q.options.map((opt: string, idx: number) => {
+                const letter = String.fromCharCode(65 + idx); // A, B, C, D
+                return (
+                  <label 
+                    key={opt} 
+                    className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition ${answers[q.id] === opt ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                  >
+                    <input 
+                      type="radio" 
+                      name={`q${q.id}`} 
+                      value={opt} 
+                      onChange={e => setAnswers({...answers, [q.id]: e.target.value})} 
+                      required 
+                      className="hidden" 
+                    />
+                    <span className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-bold flex-shrink-0 ${answers[q.id] === opt ? 'bg-emerald-600 text-white border-emerald-600' : 'border-gray-400 text-gray-600'}`}>
+                      {letter}
+                    </span>
+                    <span className="text-sm text-gray-800">{opt}</span>
+                  </label>
+                );
+              })}
             </div>
           </div>
         ))}
