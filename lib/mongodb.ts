@@ -1,10 +1,12 @@
 import mongoose from 'mongoose';
-import dns from 'node:dns';
 
-// Paksa Node.js menggunakan DNS Google untuk mengatasi blokir DNS/SRV dari ISP
-dns.setDefaultResultOrder('ipv4first');
-dns.setServers(['8.8.8.8', '8.8.4.4']);
+const MONGODB_URI = process.env.MONGODB_URI!;
 
+if (!MONGODB_URI) {
+  throw new Error('Please define the MONGODB_URI environment variable');
+}
+
+// Cache global agar tidak buka koneksi baru setiap request
 let cached = (global as any).mongoose;
 
 if (!cached) {
@@ -12,33 +14,23 @@ if (!cached) {
 }
 
 async function dbConnect() {
-  const MONGODB_URI = process.env.MONGODB_URI;
+  // Jika sudah ada koneksi, langsung pakai
+  if (cached.conn) return cached.conn;
 
-  if (!MONGODB_URI) {
-    throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
-  }
-
-  if (cached.conn) {
-    return cached.conn;
-  }
-
+  // Jika belum, buat koneksi baru
   if (!cached.promise) {
     const opts = {
-      bufferCommands: false,
+      bufferEvents: false,
+      maxPoolSize: 10, // Batasi pool agar tidak overload
+      minPoolSize: 2,
+      serverSelectionTimeoutMS: 5000, // Timeout 5 detik
     };
-
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongooseInstance) => {
-      return mongooseInstance;
+    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+      return mongoose;
     });
   }
-
-  try {
-    cached.conn = await cached.promise;
-  } catch (e) {
-    cached.promise = null;
-    throw e;
-  }
-
+  
+  cached.conn = await cached.promise;
   return cached.conn;
 }
 

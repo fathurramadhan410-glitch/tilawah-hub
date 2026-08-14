@@ -30,12 +30,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => window.removeEventListener('notify', handleNotify);
   }, []);
 
-  if (!isLoaded || !isSignedIn) {
+    // JANGAN block halaman, biarkan Clerk load di background
+  // Hapus baris ini:
+  // if (!isLoaded || !isSignedIn) { return <div>Loading...</div> }
+  
+  // Ganti dengan: tetap render halaman walau sedang loading
+  if (!isLoaded) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-white">
+      <div className="h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
       </div>
     );
+  }
+
+  if (!isSignedIn) {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
+    return null;
   }
 
   const role = String(user?.publicMetadata?.role || 'murid');
@@ -71,6 +83,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Link href="/dashboard" onClick={() => setSidebarOpen(false)} className={navLinkClass('/dashboard')}>📊 Dashboard</Link>
           <Link href="/input-bacaan" onClick={() => setSidebarOpen(false)} className={navLinkClass('/input-bacaan')}>📝 Input Bacaan</Link>
           <Link href="/target-khatam" onClick={() => setSidebarOpen(false)} className={navLinkClass('/target-khatam')}>🎯 Target Khatam</Link>
+          <Link href="/quran" onClick={() => setSidebarOpen(false)} className={navLinkClass('/quran')}>📖 Baca Al-Qur'an</Link>
           <Link href="/kehadiran" onClick={() => setSidebarOpen(false)} className={navLinkClass('/kehadiran')}>📅 Kehadiran</Link>
           <Link href="/leaderboard" onClick={() => setSidebarOpen(false)} className={navLinkClass('/leaderboard')}>🏆 Papan Peringkat</Link>
           <Link href="/kuis" onClick={() => setSidebarOpen(false)} className={navLinkClass('/kuis')}>🧠 Kuis</Link>
