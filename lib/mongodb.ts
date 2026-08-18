@@ -6,7 +6,6 @@ if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable');
 }
 
-// Cache global agar tidak buka koneksi baru setiap request
 let cached = (global as any).mongoose;
 
 if (!cached) {
@@ -14,16 +13,14 @@ if (!cached) {
 }
 
 async function dbConnect() {
-  // Jika sudah ada koneksi, langsung pakai
   if (cached.conn) return cached.conn;
 
-  // Jika belum, buat koneksi baru
   if (!cached.promise) {
     const opts = {
-      // bufferEvents: false,  <-- SUDAH DIHAPUS
-      maxPoolSize: 10, // Batasi pool agar tidak overload
-      minPoolSize: 2,
-      serverSelectionTimeoutMS: 5000, // Timeout 5 detik
+      maxPoolSize: 10,
+      minPoolSize: 1, // Turunkan menjadi 1 untuk serverless
+      serverSelectionTimeoutMS: 30000, // Naikkan menjadi 30 detik untuk Vercel
+      socketTimeoutMS: 45000, // Tambahkan ini untuk mencegah error socket
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
@@ -34,7 +31,7 @@ async function dbConnect() {
   try {
     cached.conn = await cached.promise;
   } catch (e) {
-    cached.promise = null; // Reset promise jika koneksi gagal agar bisa dicoba lagi
+    cached.promise = null;
     throw e;
   }
 
