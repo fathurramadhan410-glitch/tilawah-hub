@@ -20,17 +20,24 @@ async function dbConnect() {
   // Jika belum, buat koneksi baru
   if (!cached.promise) {
     const opts = {
-      bufferEvents: false,
+      // bufferEvents: false,  <-- SUDAH DIHAPUS
       maxPoolSize: 10, // Batasi pool agar tidak overload
       minPoolSize: 2,
       serverSelectionTimeoutMS: 5000, // Timeout 5 detik
     };
+
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
       return mongoose;
     });
   }
-  
-  cached.conn = await cached.promise;
+
+  try {
+    cached.conn = await cached.promise;
+  } catch (e) {
+    cached.promise = null; // Reset promise jika koneksi gagal agar bisa dicoba lagi
+    throw e;
+  }
+
   return cached.conn;
 }
 
